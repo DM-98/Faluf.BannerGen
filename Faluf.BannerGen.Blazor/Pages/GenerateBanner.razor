@@ -1,0 +1,119 @@
+﻿@page "/generate-banner"
+
+@inject IBannerService BannerService
+@inject ProtectedLocalStorage Store
+@inject IJSRuntime JS
+@inject IValidator<GenerateBannerInputModel> Validator
+
+<EditForm Model="_model" OnValidSubmit="Submit">
+	<FluentValidationValidator />
+	<div class="field">
+		<label class="label">@L["Instructions"]</label>
+		<InputTextArea class="textarea" @bind-Value="_model.Instructions" @oninput="@(e => SaveStateAsync())" />
+	</div>
+
+	<UploadMedia BannerRequestId="_currentRequestId" />
+	<h3 class="title is-5">@L["Colors"]</h3>
+	@foreach (String hex in _model.HexColors)
+	{
+		<div class="field has-addons">
+			<div class="control"><input class="input" type="text" @bind="@_model.HexColors[_model.HexColors.IndexOf(hex)]" /></div>
+			<div class="control"><button class="button is-danger" @onclick="() => _model.HexColors.Remove(hex)">X</button></div>
+		</div>
+	}
+	<button class="button is-small is-link mt-2" @onclick="@(() => _model.HexColors.Add("#000000"))">@L["Add&nbsp;Color"]</button>
+
+	<h3 class="title is-5 mt-5">@L["Overlay Texts"]</h3>
+	@foreach (OverlayTextInputModel text in _model.OverlayTexts)
+	{
+		<div class="box">
+			<div class="field">
+				<label class="label">@L["Text"]</label>
+				<input class="input" @bind="text.Text" />
+			</div>
+			<div class="field">
+				<label class="label">@L["Color"]</label>
+				<input class="input" type="color" @bind="text.Color" />
+			</div>
+			<div class="field">
+				<label class="label">@L["Font Size"]</label>
+				<input class="input" @bind="text.FontSize" />
+			</div>
+			<div class="field">
+				<label class="label">@L["Font Weight"]</label>
+				<input class="input" @bind="text.FontWeight" />
+			</div>
+			<button class="button is-danger is-small" @onclick="() => _model.OverlayTexts.Remove(text)">@L["Remove"]</button>
+		</div>
+	}
+
+	<ValidationSummary />
+
+	<button class="button is-small is-link" @onclick="AddOverlayText">@L["Add&nbsp;Overlay&nbsp;Text"]</button>
+	<button class="button is-primary" type="submit" disabled="@_generating">@L["Generate"]</button>
+	<button class="button is-light ml-2" type="button" @onclick="Cancel" disabled="!_generating">@L["Cancel"]</button>
+</EditForm>
+
+@if (_generating)
+{
+	<div class="columns is-multiline mt-5">
+		@foreach (Banner banner in _streamed)
+		{
+			<div class="column is-one-third">
+				<BannerItem Banner="banner" OnView="DoNothing" OnEdit="DoNothing" OnDelete="DeleteAsync" />
+			</div>
+		}
+	</div>
+}
+
+@code {
+	private GenerateBannerInputModel _model = new();
+	private List<Banner> _streamed = [];
+	private Boolean _generating;
+	private Guid _currentRequestId;
+
+	protected override async Task OnInitializedAsync()
+	{
+		_currentRequestId = Guid.NewGuid();
+
+		var loaded = await Store.GetAsync<GenerateBannerInputModel>("gen-state");
+
+		if (loaded.Success)
+		{
+			_model = loaded.Value!;
+
+			await JS.InvokeVoidAsync("app.toast", L["Restored unsent request"]);
+		}
+	}
+
+	private async Task SaveStateAsync() => await Store.SetAsync("gen-state", _model);
+	private void AddOverlayText() => _model.OverlayTexts.Add(new OverlayTextInputModel());
+
+	private async Task Submit()
+	{
+		_generating = true;
+		_streamed.Clear();
+		await Store.DeleteAsync("gen-state");
+		CancellationTokenSource cts = new();
+		_ = Stream(cts.Token);
+	}
+
+	private async Task Stream(CancellationToken token)
+	{
+		await foreach (ResponseDTO<Banner> response in BannerService.GenerateBannersAsync(_model, token))
+		{
+			if (response.Content is not null)
+			{
+				_streamed.Add(response.Content);
+
+				await InvokeAsync(StateHasChanged);
+			}
+		}
+
+		_generating = false;
+	}
+
+	private async Task DeleteAsync(Guid id) => await BannerService.DeleteBannerAsync(id);
+
+	private static void DoNothing(Banner banner) { }
+}

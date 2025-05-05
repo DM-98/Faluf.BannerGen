@@ -1,0 +1,46 @@
+﻿@page "/generated-banners"
+
+@inject IBannerService BannerService
+
+<Pagination Page="_filter.Page" PageSize="_filter.PageSize" TotalCount="_total" OnPageChanged="LoadAsync" />
+
+@foreach (BannerRequest req in _requests)
+{
+    <section class="box mb-5">
+        <h2 class="title is-5">@L["Request {0}", req.Id]</h2>
+        <div class="columns is-multiline">
+            @foreach (Banner banner in req.Banners.Take(_shown.TryGetValue(req.Id, out Int32 val) ? val : 3))
+            {
+                <div class="column is-one-third">
+                    <BannerItem Banner="banner" OnView="DoNothing" OnEdit="DoNothing" OnDelete="DeleteAsync" />
+                </div>
+            }
+        </div>
+
+        @if (req.Banners.Count > _shown.GetValueOrDefault(req.Id, 3))
+        {
+            <a class="button is-small" @onclick="() => ShowMore(req.Id, req.Banners.Count)">@L["Show&nbsp;more"]</a>
+        }
+    </section>
+}
+
+@code {
+    private readonly BannerRequestFilter _filter = new() { Page = 1, PageSize = 10 };
+    private readonly List<BannerRequest> _requests = [];
+    private readonly Dictionary<Guid, Int32> _shown = [];
+    private Int32 _total;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync(1);
+
+    private async Task LoadAsync(Int32 page)
+    {
+        _filter.Page = page;
+        ResponseDTO<IReadOnlyCollection<BannerRequest>> result = await BannerService.GetBannersAsync(_filter);
+        _requests.Clear(); _requests.AddRange(result.Content ?? []);
+        _total = result.RecordCount;
+    }
+
+    private void ShowMore(Guid id, Int32 total) => _shown[id] = Math.Min(total, _shown.GetValueOrDefault(id, 3) + 3);
+    private static void DoNothing(Banner banner) { }
+    private async Task DeleteAsync(Guid id) => await BannerService.DeleteBannerAsync(id);
+}

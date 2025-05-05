@@ -1,0 +1,26 @@
+﻿<nav class="pagination is-centered" role="navigation" aria-label="pagination">
+    <a class="pagination-previous" disabled="@(_page == 1)" @onclick="() => ChangePage(_page - 1)">@L["Previous"]</a>
+    <a class="pagination-next" disabled="@(_page == _totalPages)" @onclick="() => ChangePage(_page + 1)">@L["Next"]</a>
+    <ul class="pagination-list">
+        @for (Int32 i = 1; i <= _totalPages; i++)
+        {
+            <li><a class="pagination-link @(i == _page ? "is-current" : "")" @onclick="() => ChangePage(i)">@i</a></li>
+        }
+    </ul>
+</nav>
+
+@code {
+    [Parameter, EditorRequired] public Int32 Page { get; set; }
+    [Parameter, EditorRequired] public Int32 PageSize { get; set; }
+    [Parameter, EditorRequired] public Int32 TotalCount { get; set; }
+    [Parameter, EditorRequired] public EventCallback<Int32> OnPageChanged { get; set; }
+
+    private Int32 _page => Page;
+    private Int32 _totalPages => (Int32)Math.Ceiling((Double)TotalCount / PageSize);
+
+    private async Task ChangePage(Int32 newPage)
+    {
+        if (newPage < 1 || newPage > _totalPages) return;
+        await OnPageChanged.InvokeAsync(newPage);
+    }
+}

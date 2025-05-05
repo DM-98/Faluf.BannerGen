@@ -1,0 +1,35 @@
+﻿@inherits LayoutComponentBase
+
+@inject IJSRuntime JS
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css" />
+<link rel="stylesheet" href="css/app.css" />
+
+<div class="columns is-gapless is-fullheight">
+    <aside class="column is-narrow p-4 has-background-primary-light">
+        <p class="title is-4 has-text-primary-dark">BannerGen</p>
+        <nav class="menu">
+            <ul class="menu-list">
+                <li><NavLink class="navbar-item" href="">@L["Home"]</NavLink></li>
+                <li><NavLink class="navbar-item" href="generate-banner">@L["Generate"]</NavLink></li>
+                <li><NavLink class="navbar-item" href="generated-banners">@L["Requests"]</NavLink></li>
+                <li><NavLink class="navbar-item" href="pricing">@L["Pricing"]</NavLink></li>
+                <li><NavLink class="navbar-item" href="support">@L["Support"]</NavLink></li>
+            </ul>
+        </nav>
+        <button class="button is-light mt-auto" @onclick="ToggleTheme">@L["Toggle&nbsp;theme"]</button>
+    </aside>
+
+    <main class="column p-6 is-flex is-flex-direction-column">
+        <section class="section is-flex-grow-1">
+            @Body
+        </section>
+        <footer class="footer has-background-light has-text-centered">
+            <p>@L["© {0} BannerGen. All rights reserved.", DateTime.UtcNow.Year]</p>
+        </footer>
+    </main>
+</div>
+
+@code {
+    private async Task ToggleTheme() => await JS.InvokeVoidAsync("app.toggleTheme");
+}

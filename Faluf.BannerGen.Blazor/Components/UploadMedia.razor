@@ -1,0 +1,63 @@
+﻿@inject IHttpClientFactory HttpClientFactory
+
+<div>
+    <InputFile OnChange="OnSelected" multiple accept="image/*,video/*" />
+    <div class="columns is-multiline mt-3">
+        @foreach (MediaPreview preview in _previews)
+        {
+            <div class="column is-one-quarter">
+                <figure class="image is-128x128">
+                    @if (preview.IsImage)
+                    {
+                        <img src="@preview.Url" />
+                    }
+                    else
+                    {
+                        <video src="@preview.Url" class="has-ratio" />
+                    }
+                </figure>
+
+                <input class="input mt-1" placeholder="@L["Description"]" @bind="preview.Description" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid BannerRequestId { get; set; }
+    private readonly List<MediaPreview> _previews = [];
+
+    private async Task OnSelected(InputFileChangeEventArgs e)
+    {
+        HttpClient apiClient = HttpClientFactory.CreateClient("API");
+
+        foreach (IBrowserFile file in e.GetMultipleFiles())
+        {
+            MediaPreview preview = new(file);
+            _previews.Add(preview);
+
+            MultipartFormDataContent content = new();
+            StreamContent fileContent = new(file.OpenReadStream());
+            content.Add(fileContent, "file", file.Name);
+
+            String url = file.ContentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase) ? $"File/UploadVideo/{BannerRequestId}" : $"/api/File/UploadImage/{BannerRequestId}";
+            await apiClient.PostAsync(url, content);
+        }
+    }
+
+    public sealed record MediaPreview
+    {
+        public String Url { get; }
+        public Boolean IsImage { get; set; }
+        public String Description { get; set; } = String.Empty;
+
+        public MediaPreview(IBrowserFile file)
+        {
+			IsImage = file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+
+            using MemoryStream stream = new();
+            file.OpenReadStream(4_000_000).CopyTo(stream);
+            Url = $"data:{file.ContentType};base64,{Convert.ToBase64String(stream.ToArray())}";
+        }
+    }
+}

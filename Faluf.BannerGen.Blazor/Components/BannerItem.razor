@@ -1,0 +1,23 @@
+﻿<div class="card mb-4">
+    <div class="card-image">
+        <iframe src="@Banner.GeneratedHtmlUrl" class="has-ratio" style="width:100%;aspect-ratio:16/9;border:none;"></iframe>
+    </div>
+    <div class="card-content">
+        <p>@L["Format: {0}", Banner.BannerFormat]</p>
+        <p>@L["Cost: ${0}", Banner.TotalCostUSD]</p>
+        <p>@L["Model: {0}", Banner.AIModel.ToFriendlyName(L)]</p>
+    </div>
+    <footer class="card-footer">
+        <a class="card-footer-item" @onclick="() => OnView.InvokeAsync(Banner)"> @L["View"] </a>
+        <a class="card-footer-item" href="@Banner.GeneratedHtmlUrl" download> @L["Download"] </a>
+        <a class="card-footer-item" @onclick="() => OnEdit.InvokeAsync(Banner)"> @L["Edit"] </a>
+        <a class="card-footer-item has-text-danger" @onclick="() => OnDelete.InvokeAsync(Banner.Id)"> @L["Delete"] </a>
+    </footer>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Banner Banner { get; set; } = default!;
+    [Parameter] public EventCallback<Banner> OnView { get; set; }
+    [Parameter] public EventCallback<Banner> OnEdit { get; set; }
+    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
+}
