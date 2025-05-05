@@ -9,7 +9,7 @@
 	<FluentValidationValidator />
 	<div class="field">
 		<label class="label">@L["Instructions"]</label>
-		<InputTextArea class="textarea" @bind-Value="_model.Instructions" @oninput="@(e => SaveStateAsync())" />
+		<InputTextArea class="textarea" @bind-Value="_model.Instructions" @bind-Value:after="SaveStateAsync" />
 	</div>
 
 	<UploadMedia BannerRequestId="_currentRequestId" />
@@ -72,17 +72,24 @@
 	private Boolean _generating;
 	private Guid _currentRequestId;
 
-	protected override async Task OnInitializedAsync()
+	protected override void OnInitialized()
 	{
 		_currentRequestId = Guid.NewGuid();
+	}
 
-		var loaded = await Store.GetAsync<GenerateBannerInputModel>("gen-state");
-
-		if (loaded.Success)
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
 		{
-			_model = loaded.Value!;
+			var loaded = await Store.GetAsync<GenerateBannerInputModel>("gen-state");
 
-			await JS.InvokeVoidAsync("app.toast", L["Restored unsent request"]);
+			if (loaded.Success)
+			{
+				_model = loaded.Value!;
+
+				await JS.InvokeVoidAsync("app.toast", L["Restored unsent request"]);
+				await InvokeAsync(StateHasChanged);
+			}
 		}
 	}
 
